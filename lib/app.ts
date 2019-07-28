@@ -7,6 +7,7 @@ import passport from './passport'
 import Koa from 'koa'
 import path from 'path'
 import routes from './routes'
+import sessionStore from './session-store'
 
 const app = new Koa()
 
@@ -19,7 +20,7 @@ render(app, {
 
 app.keys = [config.secret]
 
-app.use(session({}, app))
+app.use(session({ store: sessionStore }, app))
 app.use(passport.initialize())
 app.use(passport.session())
 routes(app)
