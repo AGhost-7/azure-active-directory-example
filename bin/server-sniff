@@ -1,0 +1,38 @@
+#!/usr/bin/env ts-node-dev
+
+const app = require('../lib/app').default
+const createConnection = require('../lib/create-connection').default
+const http = require('http')
+const https = require('https')
+const { resolve } = require('url')
+
+for (const httpModule of [http, https]) {
+	const request = httpModule.request
+	const get = httpModule.get
+
+	httpModule.request = (url, options, cb) => {
+		console.log('\033[0;33mrequest - %s\033[0;0m',
+			typeof url === 'string' ? url : resolve(url.host, url.path)
+		)
+		return request(url, options, cb)
+	}
+
+	httpModule.get = (url, options, cb) => {
+		console.log('get - %j', url)
+		return get(url, options, cb)
+	}
+
+}
+
+createConnection()
+	.then(() => {
+		app.listen(6540, () => {
+			console.log('listening on port 6540')
+		})
+	})
+	.catch(err => {
+		console.log(err)
+		process.exit(1)
+	})
+
+// vim: set ft=typescript:

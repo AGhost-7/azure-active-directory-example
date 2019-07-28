@@ -1,0 +1,15 @@
+#!/usr/bin/env node
+
+const app = require('../dist/app').default
+const createConnection = require('../dist/create-connection').default
+
+createConnection()
+	.then(() => {
+		app.listen(6540, () => {
+			console.log('listening on port 6540')
+		})
+	})
+	.catch(err => {
+		console.log(err)
+		process.exit(1)
+	})

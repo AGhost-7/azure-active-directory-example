@@ -1,0 +1,9 @@
+<% if (typeof user !== 'undefined') { %>
+<p>Greetings, <%= user.name %>!</p>
+<% } else { %>
+<p>Greetings!</p>
+<% } %>
+
+<a href='/authenticate/openid/login'>Log in</a>
+<a href='/logout'>Log out</a>
+<!-- vim: set ft=ejs: -->
