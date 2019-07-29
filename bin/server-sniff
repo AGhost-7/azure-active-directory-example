@@ -1,29 +1,164 @@
 #!/usr/bin/env ts-node-dev
 
-const app = require('../lib/app').default
-const createConnection = require('../lib/create-connection').default
+/**
+ * This is meant to capture interactions with the server to be able to
+ * construct a mock of the azure service.
+ */
+
 const http = require('http')
 const https = require('https')
 const { resolve } = require('url')
+const fs = require('fs')
+const path = require('path')
+const zlib = require('zlib')
+
+const gold = (str) => '\033[0;33m' + str + '\033[0;0m'
+
+const appendEvent = (event) => {
+	fs.appendFileSync(
+		path.join(process.cwd(), 'net.log'),
+		JSON.stringify(event) + '\n',
+		'utf8')
+}
+
+const joinStream = (stream, callback) => {
+	const chunks = []
+	stream.on('data', (data) => {
+		chunks.push(data)
+	})
+	stream.on('end', () => {
+		callback(Buffer.concat(chunks))
+	})
+}
+
+const decodeResponse = (response, callback) => {
+	if (response.headers['content-length'] === '0') {
+		return callback(Buffer.from([]))
+	}
+
+	if (/gzip/.test(response.headers['content-encoding'])) {
+		const unzip = zlib.createUnzip()
+		unzip.on('error', (err) => {
+			console.error(gold('Failed to decode %s\033'), err.message)
+		})
+		response.pipe(unzip)
+		return joinStream(unzip, callback)
+	}
+
+	joinStream(response, callback)
+}
+
+const captureRequestBody = (request) => {
+	const {write, end} = request
+	const requestChunks = []
+	request.end = (...args) => {
+		if (Buffer.isBuffer(args[0])) {
+			requestChunks.push(args[0])
+		} else if(typeof args[0] === 'string') {
+			const encoding = typeof args[1] === 'string' ? args[1] : 'utf8'
+			requestChunks.push(Buffer.from(args[0], encoding))
+		}
+		return end.apply(request, args)
+	}
+	request.write = (...args) => {
+		const chunk = typeof args[0] === 'string'
+			? Buffer.from(args[0], args[1])
+			: args[0]
+		requestChunks.push(chunk)
+		return write.apply(request, args)
+	}
+	return requestChunks
+}
+
+const logRequest = (options, request) => {
+	const requestHeaders = {}
+	if (options && options.headers) Object.assign(requestHeaders, options.headers)
+	const setHeader = request.setHeader
+	request.setHeader = (name, value) => {
+		requestHeaders[name] = value
+		return setHeader.call(request, name, value)
+	}
+	const requestChunks = captureRequestBody(request)
+	request.once('response', (response) => {
+		console.log(
+			gold('request - %s %s'),
+			request.method,
+			request.path
+		)
+		decodeResponse(response, (decoded) => {
+			appendEvent({
+				direction: 'outbound',
+				request: {
+					method: request.method,
+					path: request.path,
+					headers: requestHeaders,
+					body: Buffer.concat(requestChunks).toString()
+				},
+				response: {
+					statusCode: response.statusCode,
+					headers: response.headers,
+					body: decoded.toString()
+				}
+			})
+		})
+	})
+	return request
+}
 
 for (const httpModule of [http, https]) {
 	const request = httpModule.request
 	const get = httpModule.get
+	const createServer = httpModule.createServer
 
 	httpModule.request = (url, options, cb) => {
-		console.log('\033[0;33mrequest - %s\033[0;0m',
-			typeof url === 'string' ? url : resolve(url.host, url.path)
-		)
-		return request(url, options, cb)
+		return logRequest(options, request(url, options, cb))
 	}
 
 	httpModule.get = (url, options, cb) => {
-		console.log('get - %j', url)
-		return get(url, options, cb)
+		return logRequest(options, get(url, options, cb))
 	}
 
+	//httpModule.createServer = (options, listener) => {
+	//	const wrap = (req, res) => {
+	//		console.log('\033[0;33mserver request - %s\033[0;0m', req.url)
+	//		const write = res.write
+	//		const end = res.end
+	//		const chunks = []
+	//		res.write = (...args) => {
+	//			chunks.push(args[0])
+	//			return write.apply(res, args)
+	//		}
+	//		res.end = (...args) => {
+	//			if (args.length > 0) chunks.push(args[0])
+	//			return chunks.push(args[0])
+	//		}
+	//		res.on('finish', () => {
+	//			const body = Buffer.concat(chunks)
+	//			appendEvent({
+	//				direction: 'inbound',
+	//				request: {
+	//					headers: req.headers,
+	//				},
+	//				response: {
+	//					headers: res.headers,
+	//					body
+	//				}
+	//			})
+	//		})
+	//		return listener(req, res)
+	//	}
+
+	//	if (typeof options === 'function') {
+	//		listener = options
+	//		return createServer(wrap)
+	//	} else {
+	//		return createServer(options, wrap)
+	//	}
+	//}
 }
 
+const app = require('../lib/app').default
+const createConnection = require('../lib/create-connection').default
 createConnection()
 	.then(() => {
 		app.listen(6540, () => {
