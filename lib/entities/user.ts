@@ -7,7 +7,9 @@ class User {
   @Column()
   name: string
   @Column()
-  activeDirectoryId?: string
+	activeDirectoryId?: string
+	@Column()
+	activeDirectoryApiId?: string
   @Column()
   activeDirectoryToken?: string
   @Column()

@@ -8,6 +8,7 @@ import Koa from 'koa'
 import path from 'path'
 import routes from './routes'
 import sessionStore from './session-store'
+import csrf from './csrf'
 
 const app = new Koa()
 
@@ -20,9 +21,14 @@ render(app, {
 
 app.keys = [config.secret]
 
-app.use(session({ store: sessionStore }, app))
+app.use(session({
+	store: sessionStore,
+	// no need to sign since the session is stored in the database
+	signed: false
+}, app))
 app.use(passport.initialize())
 app.use(passport.session())
+app.use(csrf)
 routes(app)
 
 export default app

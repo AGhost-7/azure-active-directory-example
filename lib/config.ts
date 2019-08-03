@@ -81,7 +81,8 @@ export default {
     scope: [
       'profile',
       'offline_access',
-			'https://graph.microsoft.com/group.read.all'
+			'https://graph.microsoft.com/directory.read.all',
+			'https://graph.microsoft.com/user.read.all'
     ],
 
     // Optional, 'error', 'warn' or 'info'

@@ -19,8 +19,8 @@ Set the following environment variables:
 - `CLIENT_SECRET`: Active directory section for your app, click "Certificates
 & secrets", and create a new client secret.
 
-Navigate to the "API permissions", and add "Group.Read.All" permission
-(delegated).
+Navigate to the "API permissions", and add "Directory.Read.All", as well
+as "User.Read.All" permission (delegated).
 
 Start ngrok, and grab the https url (e.g., `https://123.ngrok.io`) and append
 `/authenticate/openid/return`. This will be your redirect URL. Set it as the

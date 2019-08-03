@@ -4,6 +4,26 @@
 <p>Greetings!</p>
 <% } %>
 
+<div>
+	<button id='api-call'>Make api call</button>
+	<p id='result'></p>
+</div>
+
 <a href='/authenticate/openid/login'>Log in</a>
 <a href='/logout'>Log out</a>
+
+<script>
+document.querySelector('#api-call').onclick = async () => {
+	const csrfResponse = await fetch('/api/csrf');
+	const csrf = await csrfResponse.text()
+	const response = await fetch('/api/protected', {
+		method: 'POST',
+		headers: {
+			'csrf-token': csrf
+		}
+	})
+	const body = await response.text()
+	document.querySelector('#result').innerHTML = `${response.statusText} - ${body}`
+}
+</script>
 <!-- vim: set ft=ejs: -->

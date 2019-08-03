@@ -4,8 +4,10 @@ import config from './config'
 import { callbackify } from 'util'
 import passport from 'koa-passport'
 import { getManager } from 'typeorm'
+import createDebug from 'debug'
 import User from './entities/user'
-import UserGroup from './entities/user-group'
+
+const debug = createDebug('example:passport')
 
 interface Profile {
 	oid: string
@@ -56,51 +58,6 @@ Sample response from https://graph.microsoft.com/v1.0/groups:
 			 onPremisesProvisioningErrors: [] } ] }
 */
 
-interface GraphGroups {
-	'@odata.context': string
-	value: GraphGroup[]
-}
-
-interface GraphGroup {
-	id: string
-	deletedDateTime: string
-	createdDateTime: string
-	creationOptions: string[]
-	description: string
-	displayName: string
-	groupTypes: string[]
-	mail: string
-	mailEnabled: boolean
-	mailNickname: string
-}
-
-async function synchronizeGroups(user: User) {
-	const response = await fetch('https://graph.microsoft.com/v1.0/groups',
-		{
-			method: 'GET',
-			headers: {
-				authorization: 'Bearer ' + user.activeDirectoryToken
-			}
-		}
-	)
-
-	const body: GraphGroups = await response.json()
-
-	await getManager().transaction(async (transaction) => {
-		await transaction
-			.createQueryBuilder()
-			.delete()
-			.from(UserGroup)
-			.where('user_id = :id', { id: user.id })
-			.execute()
-
-		const groups = body.value.map(group =>
-			new UserGroup(group.displayName, user))
-
-		await transaction.insert(UserGroup, groups)
-	})
-}
-
 async function authorized(
 	iss: any,
 	sub: any,
@@ -115,6 +72,7 @@ async function authorized(
 	if (!user) {
 		user = new User(profile.displayName)
 		user.activeDirectoryId = profile.sub
+		user.activeDirectoryApiId = profile.oid
 		user.activeDirectoryToken = accessToken
 		user.activeDirectoryRefreshToken = refreshToken
 		await getManager().insert(User, user)
@@ -123,8 +81,6 @@ async function authorized(
 		user.activeDirectoryRefreshToken = refreshToken
 		await getManager().save(User, user)
 	}
-
-	await synchronizeGroups(user)
 
   return user
 }
