@@ -30,34 +30,6 @@ async function deserializeUser(id: number) {
 	return getManager().findOne(User, id)
 }
 
-/*
-Sample response from https://graph.microsoft.com/v1.0/groups:
-{ '@odata.context': 'https://graph.microsoft.com/v1.0/$metadata#groups',
-  value:
-   [ { id: 'ad171037-d625-4d8e-84c2-4e04af97f982',
-       deletedDateTime: null,
-       classification: null,
-       createdDateTime: '2019-07-21T17:06:24Z',
-       creationOptions: [],
-       description: null,
-       displayName: 'Team A',
-       groupTypes: [],
-       mail: null,
-       mailEnabled: false,
-       mailNickname: '29849d19-1',
-       onPremisesLastSyncDateTime: null,
-       onPremisesSecurityIdentifier: null,
-       onPremisesSyncEnabled: null,
-       preferredDataLocation: null,
-       proxyAddresses: [],
-       renewedDateTime: '2019-07-21T17:06:24Z',
-       resourceBehaviorOptions: [],
-       resourceProvisioningOptions: [],
-       securityEnabled: true,
-       visibility: null,
-			 onPremisesProvisioningErrors: [] } ] }
-*/
-
 async function authorized(
 	iss: any,
 	sub: any,
